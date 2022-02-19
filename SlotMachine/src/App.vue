@@ -1,19 +1,50 @@
 <template>
   <main class="container">
     <div class="machine">
-      <h1>{{ title }}</h1>
-      <div class="slots">
-        <p v-for="slot in slots">
-          <div class="slot">
-            <span>{{ slot.emoji }}</span>
-          </div>
+      <h1 class="shadow">{{ title }}</h1>
+      <div class="slots" :class="{ spinning: finished == false }">
+        <div
+          :class="{ won: hasWon == true }"
+          class="slot shadow"
+          v-for="slot in slots"
+          :key="slot.emoji"
+        >
+          <span>{{ slot.emoji }}</span>
+        </div>
+      </div>
+      <div class="containerButtons">
+        <button
+          class="shadow extraText"
+          :disabled="finished == false"
+          @click="play()"
+        >
+          Spelen
+        </button>
+        <p class="shadow extraText" v-if="finished == false" lang="fr">
+          Rien ne va plus
+        </p>
+        <p class="shadow extraText" v-if="hasWon == false && finished == true">
+          Verloren
+        </p>
+        <p class="shadow extraText" v-if="hasWon == true && finished == true">
+          Gewonnen
         </p>
       </div>
-      <button :disabled="finished" @click="play()">PLAY!</button>
-      <div class="during" v-if!="finished" lang="fr">Rien ne va plus</div>
-      <div class="during" v-if!="hasWon" >verloren</div>
-      <div class="during" v-if="hasWon" >Gewonnen</div>
     </div>
+    <audio
+      preload="auto"
+      volume="0.1"
+      ref="tick"
+      src="185611__kubawolanin__metal-tick-1.wav"
+      loop
+      hidden
+    ></audio>
+    <audio
+      preload="auto"
+      ref="ding"
+      src="411088__inspectorj__bell-candle-damper-ah4n.wav"
+      hidden
+    ></audio>
   </main>
 </template>
 <script>
@@ -40,28 +71,35 @@ export default {
   },
   computed: {
     finished: function () {
-      for (let i = 0; i < this.slots.length; i++) {
-        if (this.slots[i].finished !== true) {
-          return true;
+      function isFinished(element) {
+        return element.finished === true;
+      }
+      return this.slots.every(isFinished);
+    },
+    hasWon: function () {
+      function isFinished(element) {
+        return element.finished === true;
+      }
+      if (this.slots.every(isFinished)) {
+        for (let j = 0; j < this.slots.length; j++) {
+          if (this.slots[j].emoji === "❓") {
+            return false;
+          }
+          if (this.slots[j].emoji !== this.slots[0].emoji) {
+            return false;
+          }
         }
+        return true;
       }
       return false;
     },
-    hasWon: function () {
-      if (this.finished == true) {
-        for (let i = 0; i < this.slots.length; i++) {
-          if (this.slots[i].emoji === "❓") {
-            return false;
-          }
-          if (this.slots[i].emoji !== this.slots[0].emoji) {
-            return false;
-          }
-        }
-      }
-      return true;
+  },
+  watch: {
+    finished(finished) {
+      finished ? this.$refs.tick.pause() : this.$refs.tick.play();
     },
   },
-  watch: {},
+
   methods: {
     rotate(slot) {
       // 1. zet finished op false
@@ -79,11 +117,8 @@ export default {
       setTimeout(() => {
         clearInterval(int);
         slot.finished = true;
-        if (this.hasWon()) {
-          alert("hajajaj");
-        } else {
-          alert("you suck");
-        }
+        this.$refs.ding.currentTime = 0;
+        this.$refs.ding.play();
       }, 2000 + Math.random() * 3000);
     },
     play() {
